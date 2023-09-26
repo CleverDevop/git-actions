@@ -1,13 +1,13 @@
-name: shell commands
+#name: shell commands
 
-on:
-  - workflow_dispatch
+#on:
+#  - workflow_dispatch
 
-env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#env:
+ # AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
+  #AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-jobs:
+*/jobs:
   terraform-workflow:
     permissions:
       contents: write
@@ -34,6 +34,6 @@ jobs:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       - name: Terraform apply
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve*/
      # - name: Terraform destroy
      #   run: terraform destroy -auto-approve
