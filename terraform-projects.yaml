@@ -1,0 +1,309 @@
+#terraform-projects
+
+#configure a remote Development using vs code studio
+#once you are connecte , create directory terrafor-project
+to open vs code commande
+code .
+
+It is going to open a new VsCode.
+go on Officail documentation of terraform.  
+
+1- Create a resource 
+	a) Idenfy a provider First
+who is the cloud provider ? aws, google or Azure
+	
+	provider "aws" {
+  region = "us-east-1"
+}
+
+	a+) inside the provider, you need to identify the Profile* 
+this is going to use your credential configuration...AccessKeys  and secreKeysconfig 
+
+	b) Resource template 
+
+aws_instance to a file ec2.tf
+
+resource "aws_instance" "foo" {
+  ami           = "ami-03d6a5256a46c9feb" # us-east-1 is a region specifiqu
+  instance_type = "t2.micro"
+
+  foo= is just a name that we can assigne
+
+
+2- terraform wokflow
+	a) terraform init
+	b) terraform validate
+	c) terraform plan # where the credential are use to apply the plan initiated.
+
+	if you he  a message 
+
+  Variables:
+
+terraform {
+  required_version = "~> 1.0" #deprecated in version 5.0
+  required_providers {
+    aws = {
+      source = "hashircorp/aws"
+      version = "~> 3.0"
+        }
+      }
+    }
+provider "aws" {
+      region = "us-east-1"
+      #profile = "default"
+    }
+
+resource "aws_instance" "my_demo_ec2" {
+  ami           = "ami-026ebd4cfe2c043b2" # us-east-1
+  instance_type = "t2.micro"
+  tags = {
+    "Name" = "my_first_ec2"
+  }
+}
+===============================================
+#edit now as a varaible:
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+provider "aws" {
+      region = var.region
+      #profile = "default"
+    }
+
+resource "aws_instance" "my_demo_ec2" {
+  ami           = var.my_ami # us-east-1
+  instance_type = var.instance_type
+  tags = {
+    "Name" = "my_first_ec2"
+  }
+}
+variable "region"{
+  description = "the aws region"
+  type = string
+  defaut = "us-east-1"
+ }
+
+variable "my_ami"{
+  description = "the aws ami"
+  type = string
+  defaut = "ami-026ebd4cfe2c043b2"
+ }
+
+variable "instance_type"{
+  description = "the ec2 instance type"
+  type = string
+  defaut = "t2.micro"
+ }
+=====================================================================
+Edit security group using variable : 
+#haershiccorp repo https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
+
+ingress = inbound rules
+egress = outbound rules
+protocol         = "-1" meaning all port
+vpc_security_group_ids = [aws_security_group.allow_tls.id] #is a list attached on the ec2 resources
+
+resource "aws_security_group" "allow_tls" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic"
+  #vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description      = "TLS from VPC"
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = [aws_vpc.main.cidr_block]
+    #ipv6_cidr_blocks = [aws_vpc.main.ipv6_cidr_block]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    #ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "allow_tls"
+  }
+}
+
+
+
+terraform language 
+
+backend "s3" { 
+  bucket = "terraform-mylandmark" 
+  key = "prod/terraform.tfstate" 
+  region = "us-west-2" 
+  # For State Locking 
+  dynamodb_table = "terraform-lock" 
+  } 
+}
+
+============================================
+
+#data sources
+
+how to configure a date soure for AMI 
+
+let's use this ; defaut = "defaut = "ami-026ebd4cfe2c043b2"
+
+the AMI name is ; RHEL-9.2.0_HVM-20230503-x86_64-41-Hourly2-GP2
+remove the date chage by *
+   RHEL-9.2.0_HVM-*-x86_64-41-Hourly2-GP2 use this to change valuer of 
+   name in the filter
+
+example:
+
+data "aws_ami" "RHEL-9" {
+  #executable_users = ["self"]
+  most_recent      = true
+  #name_regex       = "^myami-\\d{3}"
+  owners           = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["RHEL-9.2.0_HVM-*-GP2"]    #["myami-*"]
+  }
+
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+}
+
+========================================================
+#Dynamic blocks
+
+how to create dynamicaly  many Sr at once , 
+without use  many manual line of  code .
+example 
+open Ingress = 80,22.8080,443
+egress = 80,443,25,3306,53,8080
+
+1-define a variable for the portRules.
+  
+  variable "igress_rules"{
+  type = list(number)
+  defaut = [80,22.8080,443]
+ }
+
+variable "egress_rules"{
+  type = list(number)
+  defaut = [80,443,25,3306,53,8080]
+ }
+
+# Create Security Group - SSH Traffic
+resource "aws_security_group" "port-trafic" {
+  name        = "allow-tls"
+  description = "opening custorm ports"
+  
+  dynamic "ingress" {
+    iterator    = port
+    for_each    = var.ingress_rules
+    content {
+    from_port   = port.value
+    to_port     = port.value
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  dynamic "egress" {
+    iterator    = port
+    for_each    = var.egress_rules
+    content {
+    from_port   = port.value
+    to_port     = port.value
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  tags = {
+    Name = "vpc-ssh"
+  }
+}
+
+# Create Security Group - Web Traffic
+/*resource "aws_security_group" "vpc-web" {
+  name        = "vpc-web"
+  description = "Dev VPC Web"
+  ingress {
+    description = "Allow Port 80"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "Allow Port 443"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }  
+  egress {
+    description = "Allow all ip and ports outbound"    
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "vpc-web"
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
