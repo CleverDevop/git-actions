@@ -44,8 +44,8 @@ jobs:
         run: npx semantic-release
 
 
-        #- name: apply
-        #run: terraform apply -auto-approve
+      - name: apply
+        run: terraform apply -auto-approve
 
       #- name: destroy
         #run: terraform destroy -auto-approve
